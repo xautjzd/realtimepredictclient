@@ -1,9 +1,12 @@
-package edu.xautjzd.activityrecognition.predict;
+package edu.xautjzd.activityrecognition.predict.util;
 
 public class Acceleration {
 	private double x = 0.0;                                                                               
 	private double y = 0.0;                                                                               
 	private double z = 0.0;
+	
+	public Acceleration() {
+	}
 	
 	public Acceleration(double x, double y, double z) {
 		this.x = x;

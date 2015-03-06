@@ -32,6 +32,7 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import edu.xaut.jzdbishe.R;
+import edu.xautjzd.activityrecognition.predict.util.Acceleration;
 import edu.xautjzd.activityrecognition.predict.util.PredictAttribute;
 
 public class FragmentPage1 extends Fragment implements SensorEventListener {
@@ -42,14 +43,14 @@ public class FragmentPage1 extends Fragment implements SensorEventListener {
 
 	private SensorManager sensor = null;
 	private Sensor accelerometer = null;
-	
+
 	// 存储训练集中所有的动作
 	List<String> actions = null;
 
 	// 存储三轴加速度值,以便特征提取
-	private ArrayList<Double> accx = new ArrayList<Double>();
-	private ArrayList<Double> accy = new ArrayList<Double>();
-	private ArrayList<Double> accz = new ArrayList<Double>();
+	private ArrayList<Acceleration> accs = new ArrayList<Acceleration>();
+
+	private PredictAttribute attribute; // 存储实时提取的特征属性
 
 	// 特征提取的窗口大小
 	private int window_size = 20;
@@ -115,11 +116,19 @@ public class FragmentPage1 extends Fragment implements SensorEventListener {
 		new Thread() {
 			@Override
 			public void run() {
-				PredictAttribute attribute = new PredictAttribute(5.1386863,
+				/*PredictAttribute attribute = new PredictAttribute(5.1386863,
 						-7.990457, -1.983885, 0.894269, 2.1234569, 1.785352145,
 						-0.4950536, -0.52649176, 0.1778393798, -0.1501501,
 						0.1145146, -1.737244787, 0.2548593687, -1.135281978,
-						2.303285);
+						2.303285);*/
+				if (attribute == null) {
+					try {
+						Thread.sleep(1000);
+					} catch (InterruptedException e) {
+						Log.e("ID3", e.getMessage());
+						Thread.currentThread().interrupt();
+					}
+				}
 				try {
 					HttpClient httpclient = new DefaultHttpClient();
 					String requestURL = "http://202.200.119.163:8080/realtimepredictserver/DecisionTreeServlet";
@@ -176,16 +185,121 @@ public class FragmentPage1 extends Fragment implements SensorEventListener {
 		double z = event.values[2];
 
 		// 获取指定窗口大小数据后,开始进行特征提取
-		if (accx.size() == window_size) {
-			attributeExtraction(accx, accy, accz);
-			accx.clear();
-			accy.clear();
-			accz.clear();
+		if (accs.size() == window_size) {
+			attributeExtraction(accs);
+			accs.clear();
 		}
+		Acceleration acc = new Acceleration(x, y, z);
+		accs.add(acc);
+	}
 
-		accx.add(x);
-		accy.add(y);
-		accz.add(z);
+	// 实时提取一条记录用于实时识别
+	private void attributeExtraction(ArrayList<Acceleration> accs) {
+		/*getActions();
+		if (actions == null || actions.size() != 4) {
+			try {
+				Thread.currentThread().wait();
+			} catch (InterruptedException e) {
+				Log.e("Actions", e.getMessage());
+			}
+		}*/
+
+		// 提取三轴均值
+		double x_sum = 0.0, y_sum = 0.0, z_sum = 0.0;
+		for (Acceleration acc : accs) {
+			x_sum += acc.getX();
+			y_sum += acc.getY();
+			z_sum += acc.getZ();
+		}
+		double x_average, y_average, z_average;
+		x_average = x_sum / window_size;
+		y_average = y_sum / window_size;
+		z_average = z_sum / window_size;
+
+		// 提取三轴方差与相关系数
+		double x_deviation = 0.0, y_deviation = 0.0, z_deviation = 0.0;
+		double l_xy = 0.0, l_yz = 0.0, l_xz = 0.0;
+		for (Acceleration acc : accs) {
+			x_deviation += Math.pow(acc.getX() - x_average, 2);
+			y_deviation += Math.pow(acc.getY() - y_average, 2);
+			z_deviation += Math.pow(acc.getZ() - z_average, 2);
+
+			l_xy += (acc.getX() - x_average) * (acc.getY() - y_average);
+			l_yz += (acc.getY() - y_average) * (acc.getZ() - z_average);
+			l_xz += (acc.getX() - x_average) * (acc.getZ() - z_average);
+		}
+		// 方差
+		x_deviation = x_deviation / window_size;
+		y_deviation = y_deviation / window_size;
+		z_deviation = z_deviation / window_size;
+		// 相关系数
+		double xy_correlation, yz_correlation, xz_correlation;
+		xy_correlation = l_xy
+				/ (Math.sqrt(x_deviation * y_deviation) * window_size);
+		yz_correlation = l_yz
+				/ (Math.sqrt(y_deviation * z_deviation) * window_size);
+		xz_correlation = l_xz
+				/ (Math.sqrt(x_deviation * z_deviation) * window_size);
+
+		// 偏度
+		double x_skewness = 0.0, y_skewness = 0.0, z_skewness = 0.0;
+		for (Acceleration acc : accs) {
+			x_skewness += Math.pow(acc.getX() - x_average, 3);
+			y_skewness += Math.pow(acc.getY() - y_average, 3);
+			z_skewness += Math.pow(acc.getZ() - z_average, 3);
+		}
+		x_skewness = x_skewness
+				* window_size
+				/ ((window_size - 1) * (window_size - 2) * Math.pow(
+						Math.sqrt(x_deviation), 3));
+		y_skewness = y_skewness
+				* window_size
+				/ ((window_size - 1) * (window_size - 2) * Math.pow(
+						Math.sqrt(y_deviation), 3));
+		z_skewness = z_skewness
+				* window_size
+				/ ((window_size - 1) * (window_size - 2) * Math.pow(
+						Math.sqrt(z_deviation), 3));
+
+		// 峰度
+		double x_kurtosis = 0.0, y_kurtosis = 0.0, z_kurtosis = 0.0;
+		for (Acceleration acc : accs) {
+			x_kurtosis += Math.pow(acc.getX() - x_average, 4);
+			y_kurtosis += Math.pow(acc.getY() - y_average, 4);
+			z_kurtosis += Math.pow(acc.getZ() - z_average, 4);
+		}
+		x_kurtosis = (window_size * (window_size + 1) * x_kurtosis - 3
+				* (window_size - 1) * Math.pow(x_deviation, 2)
+				* Math.pow(window_size, 2))
+				/ ((window_size - 1) * (window_size - 2) * (window_size - 3) * Math
+						.pow(Math.sqrt(x_deviation), 4));
+		y_kurtosis = (window_size * (window_size + 1) * y_kurtosis - 3
+				* (window_size - 1) * Math.pow(y_deviation, 2)
+				* Math.pow(window_size, 2))
+				/ ((window_size - 1) * (window_size - 2) * (window_size - 3) * Math
+						.pow(Math.sqrt(y_deviation), 4));
+		z_kurtosis = (window_size * (window_size + 1) * z_kurtosis - 3
+				* (window_size - 1) * Math.pow(z_deviation, 2)
+				* Math.pow(window_size, 2))
+				/ ((window_size - 1) * (window_size - 2) * (window_size - 3) * Math
+						.pow(Math.sqrt(z_deviation), 4));
+		
+		attribute = new PredictAttribute();
+		attribute.setX_Average(x_average);
+		attribute.setY_Average(y_average);
+		attribute.setZ_Average(z_average);
+		attribute.setX_Deviation(x_deviation);
+		attribute.setY_Deviation(y_deviation);
+		attribute.setZ_Deviation(z_deviation);
+		attribute.setXY_Correlation(xy_correlation);
+		attribute.setYZ_Correlation(yz_correlation);
+		attribute.setXZ_Correlation(xz_correlation);
+		attribute.setX_Skewness(x_skewness);
+		attribute.setY_Skewness(y_skewness);
+		attribute.setZ_Skewness(z_skewness);
+		attribute.setX_Kurtosis(x_kurtosis);
+		attribute.setY_Kurtosis(y_kurtosis);
+		attribute.setZ_Kurtosis(z_kurtosis);
 	}
 
 	// 获取数据库训练集中所有动作的类型
@@ -202,22 +316,21 @@ public class FragmentPage1 extends Fragment implements SensorEventListener {
 					HttpResponse response = httpclient.execute(httpget);
 					if (response.getEntity() != null) {
 						// 反序列化传过来的动作列表
-						String json = EntityUtils.toString(response.getEntity());
+						String json = EntityUtils
+								.toString(response.getEntity());
 						Gson gson = new Gson();
-						actions = gson.fromJson(json, new TypeToken<List<String>>(){}.getType());
-						Log.i("GetActions", EntityUtils.toString(response.getEntity()));
+						actions = gson.fromJson(json,
+								new TypeToken<List<String>>() {
+								}.getType());
+						Log.i("GetActions",
+								EntityUtils.toString(response.getEntity()));
+						notify(); // 当完成动作的获取后,唤醒主线程,进行下面特征的提取
 					}
 				} catch (Exception e) {
 					Log.e("GetActions", e.getMessage());
 				}
 			}
 		}.start();
-	}
-
-	// 实时提取一条记录用于实时识别
-	private void attributeExtraction(ArrayList<Double> accx,
-			ArrayList<Double> accy, ArrayList<Double> accz) {
-		getActions();
 	}
 
 	@Override
