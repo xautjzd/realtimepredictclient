@@ -1,16 +1,9 @@
 package edu.xautjzd.activityrecognition.predict;
 
-import java.io.IOException;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.http.HttpResponse;
-import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
@@ -24,11 +17,8 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentTransaction;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -36,8 +26,6 @@ import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.Spinner;
 
 import com.google.gson.Gson;
@@ -47,12 +35,6 @@ import edu.xaut.jzdbishe.R;
 import edu.xautjzd.activityrecognition.predict.util.PredictAttribute;
 
 public class FragmentPage1 extends Fragment implements SensorEventListener {
-	private static final String url = "jdbc:mysql://202.200.119.168:3306/sensor";
-	private static final String username = "root";
-	private static final String password = "19891207";
-
-	private Connection conn;
-
 	private View view = null;
 	private Spinner spinner = null;
 	// 获取Activity,以与Fragment2交互
@@ -61,6 +43,7 @@ public class FragmentPage1 extends Fragment implements SensorEventListener {
 	private SensorManager sensor = null;
 	private Sensor accelerometer = null;
 	
+	// 存储训练集中所有的动作
 	List<String> actions = null;
 
 	// 存储三轴加速度值,以便特征提取
@@ -234,9 +217,7 @@ public class FragmentPage1 extends Fragment implements SensorEventListener {
 	// 实时提取一条记录用于实时识别
 	private void attributeExtraction(ArrayList<Double> accx,
 			ArrayList<Double> accy, ArrayList<Double> accz) {
-		Connect task = new Connect();
 		getActions();
-		task.execute();
 	}
 
 	@Override
@@ -287,40 +268,5 @@ public class FragmentPage1 extends Fragment implements SensorEventListener {
 		super.onResume();
 		// 将Sensor实例与SensorEventListener实例相互绑定，50000microseconds采样一次。
 		sensor.registerListener(this, accelerometer, 50000);
-	}
-
-	// 需要用过AsyncTask来连接MySQL,否则会除错
-	private class Connect extends AsyncTask<Void, Void, Void> {
-
-		@Override
-		protected Void doInBackground(Void... params) {
-			try {
-				Class.forName("com.mysql.jdbc.Driver").newInstance();
-				conn = DriverManager.getConnection(url, username, password);
-
-			} catch (Exception e) {
-				Log.d("MySQLConnection", e.getMessage());
-			}
-			return null;
-		}
-
-		@Override
-		protected void onPostExecute(Void params) {
-			Statement stmt;
-			try {
-				stmt = conn.createStatement();
-				String sql = "select distinct Action from attributes";
-				ResultSet rs = stmt.executeQuery(sql);
-
-				// 获取动作集合
-				List<String> actions = new ArrayList<String>();
-				while (rs.next()) {
-					actions.add(rs.getString("Action"));
-				}
-			} catch (SQLException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
 	}
 }
