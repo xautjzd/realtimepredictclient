@@ -24,7 +24,7 @@ public class ActivityRecognition extends FragmentActivity implements OnClickList
 	protected FragmentPage2 fragmentPage2 = null;
 	protected FragmentPage3 fragmentPage3 = null;
 	
-	public String result = null;  // 存储行为识别结果
+	public String algorithm = "SVM";  // 存储选择的算法, 默认为SVM
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -85,12 +85,12 @@ public class ActivityRecognition extends FragmentActivity implements OnClickList
 		ft.commit();
 	}
 	
-	public String getResult() {
-		return result;
+	public String getAlgorithm() {
+		return algorithm;
 	}
 	
-	public void setResult(String result) {
-		this.result = result;
+	public void setAlgorithm(String algorithm) {
+		this.algorithm = algorithm;
 	}
 	
 	public void setSelected(){

@@ -17,8 +17,24 @@
     <string name="text_setting">设置</string>
     <string name="text_sure">确定</string>
     <string name="text_name">xautjzd</string>
-    <string name="text_state">当前状态：*****</string>
-    <string name="text_feature">特征信息：*****</string>
+    <string name="state_title">当前状态：</string>
+    <string name="text_state">***</string>
+    <string name="feature_title">特征信息：</string>
+    <string name="title_x_avg">X轴均值:</string>
+    <string name="title_y_avg">Y轴均值:</string>
+    <string name="title_z_avg">Z轴均值:</string>
+    <string name="title_x_deviation">X轴方差:</string>
+    <string name="title_y_deviation">Y轴方差:</string>
+    <string name="title_z_deviation">Z轴方差:</string>
+    <string name="title_xy_correlation">XY轴相关系数:</string>
+    <string name="title_yz_correlation">YZ轴相关系数:</string>
+    <string name="title_xz_correlation">XZ轴相关系数:</string>
+    <string name="title_x_skewness">X轴偏度:</string>
+    <string name="title_y_skewness">Y轴偏度:</string>
+    <string name="title_z_skewness">Z轴偏度:</string>
+    <string name="title_x_kurto">X轴峰度:</string>
+    <string name="title_y_kurto">Y轴峰度:</string>
+    <string name="title_z_kurto">Z轴峰度:</string>
     <string name="text_frequent">采样频率设置：</string>
 
 </resources>
