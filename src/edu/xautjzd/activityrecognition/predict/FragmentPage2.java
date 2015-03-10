@@ -1,5 +1,11 @@
 package edu.xautjzd.activityrecognition.predict;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
@@ -20,6 +26,7 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v4.app.Fragment;
@@ -64,6 +71,8 @@ public class FragmentPage2 extends Fragment implements SensorEventListener {
 	private TextView z_kurto = null;
 
 	private String serverurl = "http://202.200.119.163:8080";
+	
+	private int flag;       // 1. 调用SVM 2. 调用ID3
 
 	// 获取手机内置三轴加速度传感器数据
 	private SensorManager sensor = null;
@@ -160,11 +169,9 @@ public class FragmentPage2 extends Fragment implements SensorEventListener {
 				switch (activity.getAlgorithm()) {
 				case "SVM":
 					SVM();
-					Log.i("SVM", "SVM algorithm called!");
 					break;
 				case "ID3":
 					ID3();
-					Log.i("ID3", "ID3 algorithm called!");
 					break;
 				default:
 					SVM();
@@ -174,7 +181,7 @@ public class FragmentPage2 extends Fragment implements SensorEventListener {
 		};
 
 		timer = new Timer();
-		timer.schedule(task, 2 * 1000, 2 * 1000); // 2s发送一次识别请求
+		timer.schedule(task, 2 * 1000, 2 * 1000); // 2s发送一次识别请求, 3G情况下改为5s发送一次请求
 	}
 
 	@Override
@@ -187,12 +194,16 @@ public class FragmentPage2 extends Fragment implements SensorEventListener {
 	}
 
 	public void SVM() {
+		Log.i("SVM", "SVM algorithm called!");
 		String requestURL = serverurl + "/realtimepredictserver/svm";
+		flag = 1;
 		predict(requestURL);
 	}
 
 	public void ID3() {
+		Log.i("ID3", "ID3 algorithm called!");
 		String requestURL = serverurl + "/realtimepredictserver/decisiontree";
+		flag = 2;
 		predict(requestURL);
 	}
 
@@ -204,6 +215,7 @@ public class FragmentPage2 extends Fragment implements SensorEventListener {
 		 * 0.2548593687, -1.135281978, 2.303285);
 		 */
 		try {
+			long startTime=System.currentTimeMillis();   //获取开始时间  
 			HttpClient httpclient = new DefaultHttpClient();
 			HttpPost httppost = new HttpPost(requestURL);
 			httppost.setHeader("Content-Type", "application/json;charset=UTF-8");
@@ -218,7 +230,9 @@ public class FragmentPage2 extends Fragment implements SensorEventListener {
 
 				String result = EntityUtils.toString(response.getEntity())
 						.trim();
-
+				long endTime=System.currentTimeMillis(); //获取结束时间  
+				writeToFile(endTime - startTime);        // 保存识别时间到手机文件中
+				Log.i("Execute Time", (endTime - startTime) + "ms");
 				Message msg = myHanler.obtainMessage();
 				// 传递特征属性
 				Bundle bundle = new Bundle();
@@ -260,6 +274,27 @@ public class FragmentPage2 extends Fragment implements SensorEventListener {
 		} catch (Exception e) {
 			Log.e("Recognition Algorithm", e.getMessage());
 		}
+	}
+	
+	// 存储算法执行时间到手机文件中
+	public void writeToFile(long executetime) {
+		try {
+			// 存储到外部存储目录movies中(MIUI存储在internal storage中)
+			File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES);	
+			File file;
+			if (flag == 1)
+				file = new File(path, "/svm.txt");
+			else
+				file = new File(path, "/id3.txt");
+			
+			FileWriter fw = new FileWriter(file, true);
+			PrintWriter writer = new PrintWriter(fw);
+			writer.println(Long.toString(executetime));
+			writer.close();
+			
+		} catch (Exception e) {
+			Log.e("Write File", e.getMessage());
+		}  
 	}
 
 	@Override
